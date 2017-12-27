@@ -91,8 +91,42 @@ class Customer < ActiveRecord::Base
 end
 class Invoice < ActiveRecord::Base 
     belongs_to :customer
-    delegate :name, :street, :city, :state, :zip_code,
-             to: :customer, prefix: true
+    delegate :name, :street, :city, :state, :zip_code, to: :customer, prefix: true
 end
 ```
 The view code remains the same as in solution 1.
+
+### 1.1.2 Problem: Defining queries in the Views or Controllers
+```erb
+<ul>
+    <% User.find(order: "last_name").each do |user| -%>
+        <li><%= user.last_name %> <%= user.first_name %></li>
+    <% end %>
+</ul> 
+```
+This is a problem because you are most likely repeating this code on all views that render a list of users.
+
+Pushing down this to a controller is a bit of an improvement. However, most likely you are repeating the code on all controller actions that require a list of users. 
+Additionally, if you want to change you default user ordering you want to be able to change it __everywhere__ from a single place.
+
+```ruby
+class UsersController < ApplicationController 
+    def index
+        @users = User.order("last_name") 
+    end
+end
+```
+
+#### Solution: Push all queries down to the Models as class methods or named scopes
+```ruby
+class User < ActiveRecord::Base 
+    def self.ordered 
+        order("last_name") 
+    end
+
+    # OR AS A NAMED SCOPE
+    scope :ordered, -> { order("last_name") } 
+end
+```
+
+
