@@ -145,12 +145,17 @@ end
 ```
 In this case, `find_recent_active_memberships` knows too much about what an active membership is and how are they supposed to be ordered.  This makes `User` know too much about the `Membership` model.
 
-#### Solution: Separate the scopes on the models they belong and use scopes
-Here are 2 alternatives
+#### Solution: Move the scopes to the appropriate models
+After moving the scopes you must call the __neighboring__ model's scope instead of repeating the query.
+
+Here are 2 alternatives:
 ```ruby
+# Alternative 1
 class User < ActiveRecord::Base 
     has_many :memberships
-    def find_recent_active_memberships memberships.find_recently_active end 
+    def find_recent_active_memberships 
+        memberships.find_recently_active
+    end 
 end
 
 class Membership < ActiveRecord::Base 
@@ -162,6 +167,7 @@ end
 ```
 
 ```ruby
+# Alternative 2
 class User < ActiveRecord::Base 
     has_many :memberships
     def find_recent_active_memberships 
@@ -175,6 +181,7 @@ class Membership < ActiveRecord::Base
     scope :order_by_activity, order('last_active_on DESC') 
 end
 ```
+
 ## 1.2 Anti-pattern: Fat Models
 ### 1.2.1 Problem: A Model Has Grown Beyond It's Purpose
 Classes must have only __one__ reason to change. If a class has more than one reason to change, that means it is breaking the single responsibility principle.
