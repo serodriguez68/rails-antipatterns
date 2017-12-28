@@ -283,9 +283,59 @@ end
 ```
 Now you can: `@bank_account.balance.in_currency(:usd)` and `@bank_account.balance > @other_bank_account.balance`.
 
-#### Pitfall: Moving the extra responsibility methods into modules
-Extracting the extra responsibility methods in a module that is only included in that class is NOT the way to go.  This helps organizing the code a bit, but the class still has more than one responsibility. 
+#### Not So Great Solution 3: Moving methods into modules
 
-Also, always try to favor _composition_ over _inheritance_.  Inclusion of modules is a type of inheritance.
+Extracting the extra responsibility methods in a module that is only included in that class is NOT the way to go.  This helps organizing the code a bit, and reduces visual complexity.  However, the class still has more than one responsibility.
+
+Here is some code to illustrate how this is done.
+```ruby
+# This is the problematic code
+class Order < ActiveRecord::Base
+    # Find Orders by State
+    def self.find_purchased ... end
+    def self.find_waiting_for_review ... end
+    def self.find_waiting_for_sign_off ... end
+    
+    # General Order Searchers
+    def self.advanced_search(fields, options = {}) ... end
+    def self.simple_search(terms) ... end
+    
+    # Order Converters
+    def to_xml ... end
+    def to_json ... end
+    def to_csv ... end
+    def to_pdf ... end
+end
+```
+
+In the _not-so-great solution_ we identify that all methods inside Order can be grouped in three buckets.  We create modules for each bucket and the include/extend them inside order.
+
+```ruby
+# This is the not-so-great solution code
+class Order < ActiveRecord::Base
+    extend OrderStateFinders 
+    extend OrderSearchers 
+    include OrderExporters
+end
+
+# lib/order_state_finders.rb 
+# Omitted for simplicity
+
+# lib/order_searchers.rb  or in Rails 4+ could be somewhere in concerns
+module OrderSearchers
+    def advanced_search(fields, options = {}) ... end
+    def simple_search(terms) ... end 
+end
+
+# lib/order_exporters.rb or in Rails 4+ could be somewhere in concerns
+module OrderExporters
+    def to_xml ... end
+    def to_json ... end
+    def to_csv ... end
+    def to_pdf ... end
+end
+```
+
+Always try to favor _composition_ over _inheritance_.  Inclusion of modules is a type of inheritance.
 
 
