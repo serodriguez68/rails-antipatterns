@@ -130,3 +130,47 @@ end
 ```
 
 
+### 1.1.3 Problem: Scopes/Finders located on a model include finders from other models
+
+Consider the following code
+```ruby
+class User < ActiveRecord::Base 
+    has_many :memberships
+    def find_recent_active_memberships 
+        memberships.where(:active => true).limit(5)
+        . order("last_active_on DESC")
+    end 
+end
+```
+In this case, `find_recent_active_memberships` knows too much about what an active membership is and how are they supposed to be ordered.  This makes `User` know too much about the `Membership` model.
+
+#### Solution: Separate the scopes on the models they belong and use scopes
+Here are 2 alternatives
+```ruby
+class User < ActiveRecord::Base 
+    has_many :memberships
+    def find_recent_active_memberships memberships.find_recently_active end 
+end
+
+class Membership < ActiveRecord::Base 
+    belongs_to :user
+    def self.find_recently_active
+        where(:active => true).limit(5).order("last_active_on DESC")
+    end 
+end
+```
+
+```ruby
+class User < ActiveRecord::Base 
+    has_many :memberships
+    def find_recent_active_memberships 
+        memberships.only_active.order_by_activity.limit(5)
+    end 
+end
+
+class Membership < ActiveRecord::Base 
+    belongs_to :user
+    scope :only_active, where(:active => true)
+    scope :order_by_activity, order('last_active_on DESC') 
+end
+```
