@@ -345,4 +345,94 @@ end
 
 Always try to favor _composition_ over _inheritance_.  Inclusion of modules is a type of inheritance.
 
+### 1.2.2 Problem: Custom methods in models for sequential manipulation of multiple models
+__(and the large transaction blocks that come with them)__
 
+Consider the following code:
+
+```ruby
+class Account < ActiveRecord::Base
+    def create_account!(account_params, user_params)
+        transaction do
+            account = Account.create!(account_params)
+            first_user = User.new(user_params)
+            first_user.admin = true
+            first_user.save!
+            self.users << first_user
+            account.save! 
+            Mailer.deliver_confirmation(first_user) 
+            return account
+        end 
+    end
+end
+```
+
+There 2 main problems with this code:
+
+* The Account class has the responsibility of manipulating other classes  (`User` and `Mailer`) through the  `create_account!` method. (This is the main problem).
+* The `transaction` block can be avoided by using standard Rails validations and callbacks.
+
+> __Note from the summarizer:__ I agree that this is an anti-pattern and that there are better ways for handling this type of code.  However, I don't  agree with the book's suggested solution.  I include that solution, for the sake of completeness. Nevertheless, take the time to take a look at things like [the use case pattern](https://webuild.envato.com/blog/a-case-for-use-cases/) or service objects, I believe they are much more elegant solutions to the main problem (even if you can't avoid the transaction block).
+
+#### Proposed Solution: fixing the call to `User` by using `nested_attributes` and send email with a callback
+
+__Part 1: using nested_attributes__
+All the hand-rolled manipulation that we are doing to the `User` model can be covered by Rails' `nested_attributes`.  
+
+By adding `accepts_nested_attributes_for :users` to `Account`, the Account model will now be able to manipulate `User`  when `Account#new, Account#create, Account#update_attributes` are called with a `user_attributes` subhash.
+
+This in turn means that we need to modify our view, to make the form send the information with the `user_attributes` subhash in the proper format.
+
+```ruby
+<%= form_for(@account) do |form| -%>
+    <%= form.label :name, 'Account name' %>
+    <%= form.text_field :name %>
+    <% fields_for :user, User.new do |user_form| -%>
+        <%= user_form.label :name, 'User name' %>
+        <%= user_form.text_field :name %>
+        <%= user_form.label :email %>
+        <%= user_form.text_field :email %>
+        <%= user_form.label :password %>
+        <%= user_form.password_field :password %>
+    <% end %>
+    <%= form.submit 'Create', :disable_with => 'Please wait...' %>
+<% end %>
+```
+
+At this point your `Account` class should look like this.  Note that you still need to make the user an admin, hence the `make_admin_user` callback.
+
+```ruby
+class Account < ActiveRecord::Base
+    accepts_nested_attributes_for :users
+    before_create :make_admin_user
+    private
+        def make_admin_user 
+            self.users.first.admin = true
+        end
+    # ...
+end
+```
+
+> __Note from the summarizer:__ I personally think that `nested_attributes` just hides a bad object oriented programming practice.  A proof of that is that we ended up implementing a `make_admin_user` callback that manipulates the user from the account (And that is not even talking about the problems of callbacks themselves).  A smarter approach could be using a [form object pattern](https://codeclimate.com/blog/7-ways-to-decompose-fat-activerecord-models/).
+
+__Part 2: Using an `after_create` callback to send the email__
+The final proposed solution is the following:
+
+```ruby
+class Account < ActiveRecord::Base 
+    accepts_nested_attributes_for :users
+    before_create :make_admin_user 
+    after_create :send_confirmation_email
+    private
+        def make_admin_user 
+            self.users.first.admin = true
+        end
+        def send_confirmation_email 
+            Mailer.confirmation(users.first).deliver
+        end
+    # ...
+end
+```
+> __Note from the summarizer:__ I don't agree with sending the email through a callback. Callbacks give your classes a bunch of unexpected and __very hard to debug__ side effects that you are better-off avoiding. Imagine you now have a face to face account creation process that does not need an email.  Bad luck, with a callback __every creation__ will send an email and you can't avoid that.
+
+> __Note from the summarizer:__ The result of the proposed refactor is a very small Account class.  In my opinion this is at the expense of hiding a lot of complexity behind `nested_attributes` and paying a high cost in committing to __always__ send an email on creation (callback).
