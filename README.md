@@ -635,3 +635,60 @@ The selection of search engine depends on many factors that are specific to your
 
 The book shows an example on how to integrate with Sphinx using [Thinking Sphinx](https://github.com/pat/thinking-sphinx). I will omit this explanation as it would be obsolete for any other engine that is not Sphinx.
 
+## 1.4 Anti-pattern: Duplicate Code Duplication
+### 1.4.1 Problem: 2 Classes behave the _exact_ same way and they repeat the code
+Consider this example: a `Car` and a `Bicycle` class have the exact same implementation of all methods that make them _drivable_.
+
+```ruby
+class Car << ActiveRecord::Base 
+    validates :direction, presence: true 
+    validates :speed, presence: true
+
+    def turn(new_direction) self.direction = new_direction end
+    def brake self.speed = 0 end
+    def accelerate self.speed = speed + 10 end
+
+    # Other, car-related activities... 
+end
+
+class Bicycle << ActiveRecord::Base 
+    validates :direction, presence: true 
+    validates :speed, presence: true
+
+    def turn(new_direction) self.direction = new_direction end
+    def brake self.speed = 0 end
+    def accelerate self.speed = speed + 10 end
+    # Other, bike-related activities... 
+end
+```
+Note that this code repeats the implementation for `turn`, `brake` and `accelerate`; as well as the validations.
+
+#### Solution: Extract shared behavior into a `Drivable` module
+We can abstract the concept by thinking that both Cars and Bicycles are _Drivable_.  With this in mind, we can extract all the behavior that makes something `Drivable` into a module.
+
+```ruby
+# lib/drivable.rb 
+module Drivable
+    extend ActiveSupport::Concern
+    included do
+        validates :direction, presence: true 
+        validates :speed, presence: true
+    end
+    def turn(new_direction) self.direction = new_direction end
+    def brake self.speed = 0 end
+    def accelerate self.speed = speed + 10 end
+end
+
+class Car << ActiveRecord::Base 
+    include Drivable
+    # Other, car-related activities...
+end
+
+class Bicycle << ActiveRecord::Base 
+    include Drivable
+    # Other, bike-related activities...
+end
+```
+> This could also be achieved by implementing a superclass.  However, most of the times it is preferable to use modules instead of super classes, as modules are more flexible and allow for sharing of multiple types of behavior without most of the problems that come with multiple inheritance. (e.g a Car may be both `Drivable` and `Bookable`). 
+
+ ### 1.4.2 Problem: WIP (I can't drive 55)
