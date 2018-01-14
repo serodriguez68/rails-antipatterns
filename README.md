@@ -465,7 +465,7 @@ class PetsController < ApplicationController
 end
 
 class Toy < ActiveRecord::Base 
-    scope :cute, where(:cute => true)
+    scope :cute, -> { where(:cute => true) } 
 end
 
 class Pet < ActiveRecord::Base 
@@ -509,4 +509,88 @@ end
 class Pet < ActiveRecord::Base
     has_many :toys, :extend => ToyAssocationMethods
 end
+```
+
+### 1.3.2 Problem: Complex finders have complicated non-modular code
+Consider this example for searching songs according to multiple parameters.
+```ruby
+class Song < ActiveRecord::Base
+    def self.search(title, artist, genre, published, order, limit, page)
+        conditional_values = { title: "%#{title}%", 
+                               artist: "%#{artist}%",
+                               genre: "%#{genre}%" }
+        case order
+        when "name" : order_clause = "name DESC"
+        when "length" : order_clause = "length ASC"
+        when "genre": order_clause = "genre DESC" 
+        else
+            order_clause = "album DESC" 
+        end
+
+        joins = []
+        conditions = []
+        conditions << "(title LIKE ':title')" unless title.blank?
+        conditions << "(artist LIKE ':artist')" unless artist.blank?
+        conditions << "(genre LIKE ':genre')" unless genre.blank?
+
+        unless published.blank?
+            conditions << "(published_on == :true OR published_on IS NOT NULL)"
+        end 
+
+        find_opts = { conditions: [conditions.join(" AND "), condition_values],
+                      joins: joins.join(' '),
+                      limit: limit,
+                      order: order_clause } 
+        
+        
+        page = 1 if page.blank?
+        paginate(:all, find_opts.merge(:page => page, :per_page => 25))
+    end
+end
+```
+This code is a huge mess:
+* It implements multiple searches in one (e.g by title, by artist).
+* It combines the responsibility of searching, with the responsibility of ordering and paginating.
+* Paginating is NOT a responsibility of the model (normally the controller does this).
+
+#### Solution: Break Method Into Modular Scopes
+The solution does this:
+* Abstracts repeated finders into a generic `matching` method.
+* Separates finders, ordering and limiting by implementing separate methods for each responsibility. 
+* Builds a robust `search` that is made up of simple components.
+ 
+```ruby
+class Song < ActiveRecord::Base
+    scope :top, -> (number) { limit(number) }
+    scope :matching, -> (column, value) { 
+        where(["#{column} like ?", "%#{value}%"]) 
+    }
+    scope :published, -> { where.not(published: nil) }
+    
+    # Note from the summarizer:
+    # I am not a big fan of this implementation.  However,
+    # the point being illustrated is to separate the ordering form the finding.
+    def self.order(col)
+        sql = case order
+                when "name" : order_clause = "name DESC"
+                when "length" : order_clause = "length ASC"
+                when "genre": order_clause = "genre DESC" 
+                else order_clause = "album DESC" 
+              end
+        order(sql)
+    end
+
+    def self.search(title, artist, genre, published)
+        finder = matching(:title, title)
+        finder = finder.matching(:artist, artist)
+        finder = finder.matching(:genre, genre)
+        finder = finder.published unless published.blank? return finder
+    end 
+end
+
+# Callers can use the search method like this:
+Song.search("fool", "billy", "rock", true).
+     order("length").
+     top(10).
+      paginate(:page => 1)
 ```
