@@ -594,3 +594,44 @@ Song.search("fool", "billy", "rock", true).
      top(10).
       paginate(:page => 1)
 ```
+
+### 1.3.3 Problem: Hand-rolled Text Search Goes Out of Control
+Full text search is a complicated problem period.  For simple searches you may be able to survive with your database's `LIKE` search functionality.  However, once you start doing fuzzy search in multiple columns at a time, the code gets really ugly really fast.
+
+Here is an example of a hand-rolled search functionality that became a mess:
+```ruby
+class User < ActiveRecord::Base
+    def self.search(terms, page)
+        columns = %w( name login location country )
+        tokens = terms.split(/\s+/)
+        
+        if tokens.empty? 
+            conditions = nil
+        else
+            conditions = tokens.collect do |token|
+                columns.collect do |column|
+                    "#{column} LIKE '%#{connection.quote(token)}%'"
+                end 
+            end
+            conditions = conditions.flatten.join(" OR ") 
+        end
+
+        paginate :conditions => conditions, :page => page 
+    end
+end
+
+class UsersController < ApplicationController
+    def index
+        @users = User.search(params[:search], params[:page])
+    end 
+end
+```
+
+#### Solution: Use a proper Full-Text Search Engine
+There are many full-text search engines with smooth integrations with rails.
+The selection of search engine depends on many factors that are specific to your application and infrastructure. That discussion is beyond the scope of this summary.  However, [here is a convenient list](https://github.com/markets/awesome-ruby#search) of many of the search engine integrations available for ruby.
+
+>Note: Postgres has a built-in full text search engine which may be good enough for you application.  Before adding a new dependency, take a look at the Postgres engine to check if it suits your needs.
+
+The book shows an example on how to integrate with Sphinx using [Thinking Sphinx](https://github.com/pat/thinking-sphinx). I will omit this explanation as it would be obsolete for any other engine that is not Sphinx.
+
