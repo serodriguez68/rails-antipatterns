@@ -1,4 +1,4 @@
-# Rails Anti-patterns
+# Rails Anti-patterns Summary
 Notes by: __[Sergio Rodriguez](https://github.com/serodriguez68 "Sergio's Github")__ 
 
 __These are some notes I took while reading the book. Feel free to send me a pull request if you want to make an improvement.__
@@ -436,3 +436,77 @@ end
 > __Note from the summarizer:__ I don't agree with sending the email through a callback. Callbacks give your classes a bunch of unexpected and __very hard to debug__ side effects that you are better-off avoiding. Imagine you now have a face to face account creation process that does not need an email.  Bad luck, with a callback __every creation__ will send an email and you can't avoid that.
 
 > __Note from the summarizer:__ The result of the proposed refactor is a very small Account class.  In my opinion this is at the expense of hiding a lot of complexity behind `nested_attributes` and paying a high cost in committing to __always__ send an email on creation (callback).
+
+## 1.3 Anti-pattern: Spaghetti SQL
+### 1.3.1 Problem: Active Record associations are not leveraged
+
+Consider the following code:
+```ruby
+class PetsController < ApplicationController 
+    def show
+        @pet = Pet.find(params[:id])
+        @toys = Toy.where(:pet_id => @pet.id, :cute => true)
+    end
+end
+```
+This code has 2 problems:
+* The controller is aware of the Toy implementation (it knows what columns does Toy have).
+* The association from pet to toys is not being used.
+
+#### Solution 1: Define scopes on the responsible models and use associations
+__90% of the times you would use this solution. Other solutions are shown below, but they are useful in very specific cases only.__
+
+```ruby
+class PetsController < ApplicationController 
+    def show
+        @pet = Pet.find(params[:id])
+        @toys = @pet.toys.cute.paginate(params[:page]) 
+    end
+end
+
+class Toy < ActiveRecord::Base 
+    scope :cute, where(:cute => true)
+end
+
+class Pet < ActiveRecord::Base 
+    has_many :toys
+end
+```
+Notice that:
+* The `Toy` class is the one responsible for defining what `#cute` means.
+* The controller leverages the association.
+
+#### Solution 2: `extend` the association using Modules or Blocks
+Rails allows us to "enrich" a declared association with methods by passing in a block OR extending a module.  This gives access to the _proxy owner_ (the original caller) inside the method.
+
+Although this is rarely needed, is can be very handy __under certain conditions__. The following code shows an example when this type of "association enrichment" is the way to go.
+
+```ruby
+class Toy < ActiveRecord::Base 
+    # has column :minimum_age
+end
+class Pet < ActiveRecord::Base 
+    # has column :age
+    
+    # The association :toys is being enriched by passing a block.
+    has_many :toys do 
+        def appropriate
+            where(["minimum_age < ?", proxy_owner.age]) 
+        end
+    end 
+end
+```
+
+This association enrichment now allows to do `pet.toys.appropriate`.  Note that `.appropriate` makes use of the __pet's age__ (the caller / proxy owner) inside the scope.
+
+The syntax for association enrichment with modules is the following. A different and non-coherent example is used to illustrate the syntax:
+```ruby
+module ToyAssocationMethods 
+    def cute
+        where(:cute => true) 
+    end
+end
+class Pet < ActiveRecord::Base
+    has_many :toys, :extend => ToyAssocationMethods
+end
+```
