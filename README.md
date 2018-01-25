@@ -791,3 +791,140 @@ It is commonly knowns as a good practice to __extract__ the gem from an app. Thi
 
 Explanations on how to test and create a gem are outside the scope of this summary.
 
+### 1.4.4 Problem: Your models contain some sort of "status" column and the code for dealing with that is very repetitive
+
+Consider the following code:
+
+```ruby
+class Purchase < ApplicationRecord
+    validates_presence_of :status
+    validates_inclusion_of :status, in: %w(in_progress submitted approved shipped received canceled)
+    
+    # Status Finders
+    scope :all_in_progress, -> { where(status: 'in_progress') }
+    scope :all_submitted, -> { where(status: 'submitted') }
+    scope :all_approved, -> { where(status: 'approved') }
+    # ... all other finders
+
+    # Status Accessors
+    def in_progress? status == 'in_progress' end
+    def submitted? status == 'submitted' end
+    def approved? status == 'approved' end
+    # ... all other accessors
+end
+```
+
+The problem with this code is that there is no single authoritative place to hold the statuses of a `Purchase`.  For example, if we were asked to split the _shipped_ status to *partially_shipped* and *fully_shipped*, we would need to do a change on 3 different places: Validations, Finders and Accessors.
+
+#### Solution 1 (non ideal): use in-class meta-programming to dynamically define validations, finders and accessors
+
+> This solution is included for educational purposes only as Rails already provides a feature to solve this very frequent problem.
+
+```ruby
+class Purchase < ApplicationRecord
+    
+    # Single authoritative source of statuses for this class
+    STATUSES = %w(in_progress submitted approved shipped received)
+
+    validates_presence_of :status
+    validates_inclusion_of :status, :in => STATUSES
+    
+    # Dynamic definition of finders
+    class << self
+        STATUSES.each do |status_name|
+            define_method "all_#{status_name}"
+                where(:status => status_name)
+            end
+        end
+    end
+    
+    # Dynamic definition of accessors
+    STATUSES.each do |status_name|
+        define_method "all_#{status_name}?"
+            where(:status => status_name)
+        end
+    end
+
+end
+```
+
+The drawbacks of this approach are:
+* The code gets a obscure.
+* The whole idea of "statuses" could be abstracted for use on multiple classes. This approach just solves the problem for the `Purchase` class.
+
+#### Solution 2 (still non ideal): abstract meta-programming for "status" handling into `ApplicationRecord`
+
+> This solution is shown to illustrate how `ApplicationRecord` can be used to give additional functionality to all your models or to extend `ActiveRecord`. The solution shown here is the equivalent of a hand-rolled version of Rails' `enum` feature. However, the underlying knowledge of extension by using `ApplicationRecord` may be useful on other circumstances.
+
+```ruby
+# Step 1: Abstract the functionality to an extension module
+# lib/extensions/statuses.rb
+module Extensions
+  module Statuses
+    extend ActiveSupport::Concern
+
+    class_methods do
+      def has_statuses(*status_names)
+        validates :status, presence: true, inclusion: { in: status_names }
+
+        # Dynamic definition of finders
+        status_names.each do |status_name|
+          scope "all_#{status_name}", -> { where(status: status_name) }
+        end
+
+        # Dynamic definition of accessors
+        status_names.each do |status_name|
+          define_method "#{status_name}?" do
+            status == status_name
+          end
+        end
+      end
+    end
+
+  end
+end
+
+# Step 2: Include the extension into ApplicationRecord
+class ApplicationRecord < ActiveRecord::Base
+  self.abstract_class = true
+  include Extensions::Statuses
+  # ... inclusion of other extension modules
+end
+
+
+# Step 3: Use the has_statuses method on models that have statutes and let
+# the meta-programming magic do the work.
+ class Purchase < ApplicationRecord
+    has_statuses :in_progress, :submitted, :approved, :shipped,
+ end
+
+# Now you can do things like Purchase.all_in_progress OR Purchase.last.in_progress?
+```
+
+#### Solution 3 (ideal for this case): User Rails Enums
+Rails has a feature called [Enums](http://api.rubyonrails.org/classes/ActiveRecord/Enum.html) that was made for this exact reason.
+```ruby
+class Purchase < ApplicationRecord
+    enum status: [:in_progress, :submitted, :approved, :shipped]
+end
+
+# The enum defines many convenience methods for you
+purchase.in_progress!
+purchase.in_progress? # => true
+purchase.status # => "in_progress"
+
+# It also defines finders/scopes
+Purchase.in_progress # => Finds all purchases with status in_progress
+```
+
+### 1.4.bonus Problem: My models have statuses/states and modeling how this states transition is driving me crazy
+
+Having a pre-defined set of "pathways" for states/statutes is a very common feature associated with states.  For example, an order can only be _returned_ if it was _delivered_ (i.e it does not make sense to return an order that hasn't been shipped).
+
+Hand, rolling this code often gets out of control easily.
+
+#### Solution: Take a look at state machines
+Ruby has multiple libraries for state machines that are very useful to determine lawful (and hence unlawful) transitions of states.  Here is a list of some of the most popular ones:
+* [State Machine](https://github.com/pluginaweek/state_machine)
+* [Act As State Machine](https://github.com/aasm/aasm)
+* [Work Flow](https://github.com/geekq/workflow)
