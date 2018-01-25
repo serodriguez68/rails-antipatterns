@@ -647,7 +647,6 @@ class Car << ActiveRecord::Base
     def turn(new_direction) self.direction = new_direction end
     def brake self.speed = 0 end
     def accelerate self.speed = speed + 10 end
-
     # Other, car-related activities... 
 end
 
@@ -691,4 +690,89 @@ end
 ```
 > This could also be achieved by implementing a superclass.  However, most of the times it is preferable to use modules instead of super classes, as modules are more flexible and allow for sharing of multiple types of behavior without most of the problems that come with multiple inheritance. (e.g a Car may be both `Drivable` and `Bookable`). 
 
- ### 1.4.2 Problem: WIP (I can't drive 55)
+
+### 1.4.2 Problem: 2 Classes have _very similar_ behavior and some of the code is repeated
+__Behavior in the 2 classes only changes slightly__
+
+Go back to hour previous example but now imagine we had to add the following constraints:
+* `Cars` have a top speed of 100 mph and accelerate at a rate of 10 mph.
+* `Bicycles` have a top speed of 20 mph and accelerate at a rate of 1 mph.
+
+The rest of the behavior that makes them `Drivable` stays the same.
+
+In a NON-DRY implementation, the code would look like this:
+```ruby
+class Car << ActiveRecord::Base 
+    validates :direction, presence: true 
+    validates :speed, presence: true
+
+    def turn(new_direction) self.direction = new_direction end
+    def brake self.speed = 0 end
+    def accelerate self.speed = [speed + 10, 100].min end
+    # Other, car-related activities... 
+end
+
+class Bicycle << ActiveRecord::Base 
+    validates :direction, presence: true 
+    validates :speed, presence: true
+
+    def turn(new_direction) self.direction = new_direction end
+    def brake self.speed = 0 end
+    def accelerate self.speed = [speed + 1, 20].min end
+    # Other, bike-related activities... 
+end
+```
+
+#### Solution: Extract shared behavior into a `Drivable` module AND customize particular behavior through the template pattern
+
+The solution is very similar to the previous solution. However, now all `Drivable` classes have the responsibility to define their top speed and acceleration through methods.
+
+Note that in the following code the `Drivable` module enforces all implementers to define their own `#top_speed` and `#acceleration` methods to be able to `#accelerate`.  `Drivable` however, helps a bit by raising informative exceptions in case a developer forgets to implement any of these.
+
+```ruby
+# lib/drivable.rb 
+module Drivable
+    extend ActiveSupport::Concern
+    included do
+        validates :direction, presence: true 
+        validates :speed, presence: true
+    end
+    def turn(new_direction) self.direction = new_direction end
+    def brake self.speed = 0 end
+    def accelerate self.speed = [speed + acceleration, top_speed].min end
+    
+    def top_speed
+        raise TemplateError, "The Drivable module requires the " +
+                             "included class to define a " + 
+                             "top_speed method"
+    end
+
+    def acceleration
+        raise TemplateError, "The Drivable module requires the " +
+                             "included class to define an " + 
+                             "acceleration method"
+    end
+end
+
+class Car << ActiveRecord::Base 
+    include Drivable
+    # Implementation of template methods
+    def top_speed 100 end
+    def acceleration 10 end
+    # Other, car-related activities...
+end
+
+class Bicycle << ActiveRecord::Base 
+    include Drivable
+    # Implementation of template methods
+    def top_speed 20 end
+    def acceleration 1 end
+    # Other, bike-related activities...
+end
+```
+
+_Why use methods instead of constants?_
+
+* Methods provide flexibility: for a case of an amphibian vehicle, the top_speed and acceleration may change if the vehicle is currently on water or land.  Methods provide the flexibility for such implementation.
+* Easiness of testing: it is more natural to test methods than constants and it is easier to stub methods than to stub constants.
+* We can raise helpful error messages through methods.
