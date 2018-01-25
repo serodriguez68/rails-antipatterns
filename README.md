@@ -785,7 +785,7 @@ Imagine `Drivable` is something you would like to share among multiple applicati
 #### Solution: Create a gem
 Do this ONLY if you really need to share the behavior on multiple apps.  Otherwise, keep the code inside the app.
 
-It is commonly knowns as a good practice to __extract__ the gem from an app. This means that first you re-factor everything inside the app and make sure it works before moving it out to a gem.
+It is commonly known as a good practice to __EXTRACT__ the gem from an app. This means that first you re-factor and abstract everything inside the app and make sure it works before moving it out to a gem.
 
 > Rails used to have a thing called _plugins_.  This is now deprecated and gems (and gemified plugins) are now the way to go.
 
