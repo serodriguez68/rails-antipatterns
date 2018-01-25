@@ -917,7 +917,7 @@ purchase.status # => "in_progress"
 Purchase.in_progress # => Finds all purchases with status in_progress
 ```
 
-### 1.4.bonus Problem: My models have statuses/states and modeling how this states transition is driving me crazy
+### 1.4.bonus Problem: My models have statuses/states and modeling how the states transition is driving me crazy
 
 Having a pre-defined set of "pathways" for states/statutes is a very common feature associated with states.  For example, an order can only be _returned_ if it was _delivered_ (i.e it does not make sense to return an order that hasn't been shipped).
 
