@@ -776,3 +776,18 @@ _Why use methods instead of constants?_
 * Methods provide flexibility: for a case of an amphibian vehicle, the top_speed and acceleration may change if the vehicle is currently on water or land.  Methods provide the flexibility for such implementation.
 * Easiness of testing: it is more natural to test methods than constants and it is easier to stub methods than to stub constants.
 * We can raise helpful error messages through methods.
+
+
+### 1.4.3 Problem: You want to share behavior across different applications
+
+Imagine `Drivable` is something you would like to share among multiple applications.  Well... copying and pasting the module is clearly a bad solution, so what should you do?
+
+#### Solution: Create a gem
+Do this ONLY if you really need to share the behavior on multiple apps.  Otherwise, keep the code inside the app.
+
+It is commonly knowns as a good practice to __extract__ the gem from an app. This means that first you re-factor everything inside the app and make sure it works before moving it out to a gem.
+
+> Rails used to have a thing called _plugins_.  This is now deprecated and gems (and gemified plugins) are now the way to go.
+
+Explanations on how to test and create a gem are outside the scope of this summary.
+
