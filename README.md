@@ -694,7 +694,7 @@ end
 ### 1.4.2 Problem: 2 Classes have _very similar_ behavior and some of the code is repeated
 __Behavior in the 2 classes only changes slightly__
 
-Go back to hour previous example but now imagine we had to add the following constraints:
+Go back to the previous example but now imagine we had to add the following constraints:
 * `Cars` have a top speed of 100 mph and accelerate at a rate of 10 mph.
 * `Bicycles` have a top speed of 20 mph and accelerate at a rate of 1 mph.
 
