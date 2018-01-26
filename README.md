@@ -901,7 +901,7 @@ end
 # Now you can do things like Purchase.all_in_progress OR Purchase.last.in_progress?
 ```
 
-#### Solution 3 (ideal for this case): User Rails Enums
+#### Solution 3 (ideal for this case): Use Rails Enums
 Rails has a feature called [Enums](http://api.rubyonrails.org/classes/ActiveRecord/Enum.html) that was made for this exact reason.
 ```ruby
 class Purchase < ApplicationRecord
@@ -985,3 +985,93 @@ end
     * Simple is not the same as stupid. If your authorization code is repetitive, is mixed with code of other nature (among others smells), your code is stupid, not simple.
 * [Daniel Kehoe's capstone tutorials](https://tutorials.railsapps.org/) have a great series on authorization.  In there he discusses and compares the pros and cons of different complexity level approaches to authorization.
 * I have some [google slides](https://docs.google.com/presentation/d/1XOxhIV3LCAlNh4ghn75nkRRWPMb_CnsR3h_DBIqX3FI/edit?usp=sharing) where I explain and compare in good detail some of the typical approaches to authorization (including advanced authorization features).  I'm sorry they are currently in Spanish.
+ 
+## 2.2 Problem: Too many mini models to represent things like states, categories, etc
+
+Consider an app where `Articles` have states (e.g published) and categories (e.g faqs).
+Such app could have the following _normalized_ code:
+
+ ```ruby
+ class Article < ActiveRecord::Base
+    belongs_to :state
+    belongs_to :category
+
+    validates :state_id, presence: true
+    validates :category_id, presence: true
+ end
+
+ class State < ActiveRecord::Base
+    has_many :articles
+    
+    # Dynamically defines convenience methods to
+    # do things like State.published
+    class << self 
+        all.each do |state|
+            define_method "#{state}" do 
+                find_by(name: state)
+            end 
+        end
+    end
+ end
+
+ class Category < ActiveRecord::Base
+    has_many :articles
+    # Equivalent dynamic code for Category.faqs
+ end
+
+ # With this code we can do things like
+ @article.state = State.published
+ @article.state == State.published
+ ```
+Despite being the _normalized_ approach to the problem, this code has some problems:
+
+* Adding this 2 'just one more extra little' models (`State` and `Category`) bring a ton of code with them: think about code in the models themselves, migrations, specs, factories.
+* Very often this 'little' models do not even require a user interface because they are tightly coupled with application logic. Not even admins should be allowed to modify them.
+    * Think what will happen if an admin changes the name (or deletes) a state that has behavior tied to it in your code... Everything will break! 
+    * You are better of not even allowing the change in the first place by not storing that in the DB. 
+
+> Rule of thumb: If there is no user interface for adding, removing or managing data, there is no need for a model. A denormalized column populated by a hash or array of possible values is fine.
+
+### Solution 1 (hand-rolled): Denormalize states and categories into text fields
+> Included because the meta-programming concepts can be very useful in other contexts. Next solution is more suitable for this case.
+
+With a little help of meta-programming magic, we can completely eliminate the `State` and `Category` models and at the same time define convenient interfaces for handling the `Article's` states and categories.
+
+```ruby
+class Article < ActiveRecord::Base
+    STATES = %w(draft review published archived)
+    CATEGORIES = %w(tips faqs misc)
+
+    validates :state, inclusion: { in:  STATES}
+    validates :category, inclusion: { in:  CATEGORIES}
+    
+    # Dynamically defines instance methods of the type
+    # article.draft?
+    STATES.each do |state|
+        define_method "#{state}?" do
+            self.state == state
+        end
+    end
+
+    # Similar dynamic code for categories...
+
+    class << self
+        # Dynamically defines class methods to return the string of the state
+        # e.g article.state = Article.draft 
+        # Article.draft # => "draft"
+        STATES.each do |state|
+            define_method "#{state}" do
+                state
+            end
+        end
+
+        # Similar dynamic code for categories...
+    end
+end
+```
+
+### Solution 2 (preferred): Use Rails Enums
+Rails has a feature called [Enums](http://api.rubyonrails.org/classes/ActiveRecord/Enum.html) that was made for this exact reason.
+
+This was already covered previously in the summary.
+
