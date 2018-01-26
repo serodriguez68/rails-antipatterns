@@ -928,3 +928,60 @@ Ruby has multiple libraries for state machines that are very useful to determine
 * [State Machine](https://github.com/pluginaweek/state_machine)
 * [Act As State Machine](https://github.com/aasm/aasm)
 * [Work Flow](https://github.com/geekq/workflow)
+
+# Chapter 2 - Domain Modeling
+## 2.1 Set of problems: Authorization code is messy and/or over-engineered
+
+Authorization is a hard problem (period). Here is a list of the most common problems that authorization codes have.
+
+### 2.1.1 Problem: The `User` model defines convenience methods that determine the authorization rules
+```ruby
+class User < ActiveRecord::Base
+    # Other roles related code...
+    def can_edit_content?
+        self.has_roles?(['admin', 'editor', 'associate editor'])
+    end
+    def can_edit_post?(post) 
+        self == post.user ||
+        self.has_roles?(['admin', 'editor', 'associate editor']) 
+    end
+end
+```
+
+Problems:
+* It is not the `User` responsibility to authorize.
+* As the `can_edit_post?` method depicts, many authorization rules involve instances of other models (e.g post). This gets really messy really fast.
+
+#### Solution: See authorization best practices according to your needs.
+
+### 2.1.2 Problem: There is no single authoritative source of what the roles are.
+
+Go back and check the code of the previous example.  All convenience methods repeat the names of the roles (_i.e admin, editor, associate editor_).  This means that if you need to change something, you have to do it in many places AND if you forget a change, it will fail silently.
+
+#### Solution: See authorization best practices according to your needs.
+Any of the strategies shown there has a single authoritative source of roles.
+
+### 2.1.3 Problem: Over-engineered authorization code
+Quite often, developers program overly complex authorization code that is not really needed for the scope of the application.
+
+#### Guidelines to avoid over-engineered solutions
+* Never build beyond the application requirements at the time you are writing the code.
+* If you do not have concrete requirements, don't write any code.
+* Don't jump to a model prematurely; there are often simple ways such as using Booleans and denormalization to avoid using additional models.
+* If there is no user interface for adding, removing or managing data, there is no need for a model. A denormalized column populated by a hash or array of possible values is fine. See example:
+
+```ruby
+# On an application where roles have no use interface
+class Role < ActiveRecord::Base
+    belongs_to :user
+    # Denormalized but centralized role names
+    TYPES = %w(admin editor writer guest) 
+    validates :name, :inclusion => {:in => TYPES}
+end
+```
+
+### 2.1.4 Overarching Solution: Authorization best practices
+* Go with the simplest approach that your requirements permit.
+    * Simple is not the same as stupid. If your authorization code is repetitive, is mixed with code of other nature (among others smells), your code is stupid, not simple.
+* [Daniel Kehoe's capstone tutorials](https://tutorials.railsapps.org/) have a great series on authorization.  In there he discusses and compares the pros and cons of different complexity level approaches to authorization.
+* I have some [google slides](https://docs.google.com/presentation/d/1XOxhIV3LCAlNh4ghn75nkRRWPMb_CnsR3h_DBIqX3FI/edit?usp=sharing) where I explain and compare in good detail some of the typical approaches to authorization (including advanced authorization features).  I'm sorry they are currently in Spanish.
