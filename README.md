@@ -5,6 +5,7 @@ _______________________________________________________________________________
 # Table of Content
 ## [Chapter 1 - Models](#chapter-1---models-1)
 ## [Chapter 2 - Domain Modeling](/chapter_2_domain_modeling.md)
+## [Chapter 3 - Views](/chapter_3_views.md)
 
 _______________________________________________________________________________
 # Chapter 1 - Models
