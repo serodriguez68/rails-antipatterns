@@ -986,7 +986,7 @@ end
 * [Daniel Kehoe's capstone tutorials](https://tutorials.railsapps.org/) have a great series on authorization.  In there he discusses and compares the pros and cons of different complexity level approaches to authorization.
 * I have some [google slides](https://docs.google.com/presentation/d/1XOxhIV3LCAlNh4ghn75nkRRWPMb_CnsR3h_DBIqX3FI/edit?usp=sharing) where I explain and compare in good detail some of the typical approaches to authorization (including advanced authorization features).  I'm sorry they are currently in Spanish.
  
-## 2.2 Problem: Too many mini models to represent things like states, categories, etc
+## 2.2 Problem: Too many "mini models" to represent things like states, categories, etc
 
 Consider an app where `Articles` have states (e.g published) and categories (e.g faqs).
 Such app could have the following _normalized_ code:
@@ -1025,9 +1025,9 @@ Such app could have the following _normalized_ code:
  ```
 Despite being the _normalized_ approach to the problem, this code has some problems:
 
-* Adding this 2 'just one more extra little' models (`State` and `Category`) bring a ton of code with them: think about code in the models themselves, migrations, specs, factories.
+* Adding this 2 'little extra' models (`State` and `Category`) bring a ton of code with them: think about code in the models themselves, migrations, specs, factories, etc.
 * Very often this 'little' models do not even require a user interface because they are tightly coupled with application logic. Not even admins should be allowed to modify them.
-    * Think what will happen if an admin changes the name (or deletes) a state that has behavior tied to it in your code... Everything will break! 
+    * Think what will happen if an admin changes the name (or deletes) a state that has behavior tied to it in your code... __Everything will break! __
     * You are better of not even allowing the change in the first place by not storing that in the DB. 
 
 > Rule of thumb: If there is no user interface for adding, removing or managing data, there is no need for a model. A denormalized column populated by a hash or array of possible values is fine.
@@ -1075,3 +1075,149 @@ Rails has a feature called [Enums](http://api.rubyonrails.org/classes/ActiveReco
 
 This was already covered previously in the summary.
 
+## 2.3 Problem: Too many little models for small non-structured data
+Consider a scenario where you want to build the back end for the interface shown next.  Note that if the user selects the "other" option, it must provide a short text in the text box.
+<img src="/images/ch2/how_did_you_hear_about_us.png" width="600"/>
+
+We will compare the pros and cons of multiple approaches to model this problem.
+
+### Approach 1: The "Has many and Belongs to Many" normalized solution
+```ruby
+class User < ActiveRecord::Base 
+    has_many :referrals
+end
+
+# There is a join table "referral-users" in between
+
+class Referral < ActiveRecord::Base 
+    has_and_belongs_to_many :users
+end
+```
+
+Pros: 
+
+* If the `Referral` categories is something you may want to edit through the admin (without changing the code), then this is the way to go.
+
+Cons:
+
+* If `Referral` categories is not something you want to change through the admin, then this is overkill and introduces too much code and 2 new models for a very small functionality.
+* You still need to house a `referral_other` attribute in the User (or the join table) to store the user's text. This is kind of weird.
+
+### Approach 2: "Has Many" slightly de-normalized solution.
+```ruby
+class User < ActiveRecord::Base 
+    has_many :referral_types
+end
+
+# Has attributes user_id, value
+class Referral < ActiveRecord::Base 
+    VALUES = ['Newsletter', 'School', 'Web',
+              'Partners/Events', 'Media', 'Other']
+    validates :value, inclusion: {in: VALUES}
+    belongs_to :user 
+end
+```
+
+Pros:
+
+* This requires 1 model less than the previous approach (no join table).
+
+Cons:
+
+* We can no longer edit the Referral Categories through the data base. (You need to change the code).
+* We still have to keep the `referral_other` attribute in the `User` model.
+
+### Approach 3: Use boolean flags
+```ruby
+# User has attributes (all booleans, except other):
+#   heard_through_newsletter, heard_through_school, heard_through_web,
+#   heard_through_partners, ..., heard_through_other (text) 
+class User < ActiveRecord::Base  end
+```
+Pros:
+
+* No extra models at all. Use this ONLY if you need maximum 3 booleans.
+* Code is extremely simple (no extra code at all).
+
+Cons:
+
+* If you need more than 3 booleans, this gets really messy.
+* Changes in referral types require a migration!
+
+### Approach 4: Store data as a serialized hash in a text column on the `User` model
+
+Serialization is the process of converting an object/hash/array into it's text representation for storage in the database (and the other way around for data retrieval). 
+
+This means that we can turn the ruby hash  `{"Newsletter" => true, "School" => false, "Other" => "Street Flyer"}` to a text (typically YAML of JSON) to store in the DB as text.
+
+Active Record attribute serializers doc all the heavy lifting of serializing and de-serializing when records are saved or retrieved.
+
+For this example the code would be something along the lines of: 
+```ruby
+class User < ActiveRecord::Base
+    HEARD_THROUGH_VALUES = ['Newsletter', 'School', 'Web',
+        'Partners/Events', 'Media', 'Other'] 
+
+    # Which attribute to serialize and which serializer to use
+    serialize :heard_through, JSON
+end
+```
+
+The view would look like this:
+```html
+<%= fields_for :heard_through, (form.object.heard_through||{}) do |heard_through_fields| -%>
+    <% User::HEARD_THROUGH_VALUES.each do |heard_through_val| -%> 
+        <%= heard_through_fields.check_box "field %>
+        <%= heard_through_fields.label :heard_through, heard_through_val %>
+    <% end -%> 
+<% end -%>
+```
+> The book authors don't make clear how to handle the "other" text in this case.  Presumably you could store the text directly inside the hash as the value of the "other" key.  However, this will require a little bit of front-end magic.
+
+Pros:
+
+* No extra models.
+* Highly flexible structure.
+
+Cons:
+
+* Changes in referral types require changes in code.
+* You loose search capabilities in the DB. 
+    * Use this if you are certain that you don't require to search by the `heard_through` attribute.
+    * You could try to do string search. However, this gets very complicated very fast.   
+
+### Approach 5 (Bonus): Use Postgres' native de-normalized column types (JSONB or Arrays)
+
+Postgres supports array and jsonb type columns natively.  This means that you can store, index and query de-normalized data. Jsonb columns integrate smoothly with Rails as Hashes (no effort needed on our part).
+
+The explanation on how to use these features is out of the scope of this summary. However, here are some useful resources about it:
+- https://nandovieira.com/using-postgresql-and-jsonb-with-ruby-on-rails
+- http://blog.plataformatec.com.br/2014/07/rails-4-and-postgresql-arrays/
+
+Pros: 
+
+* No extra models.
+* Highly flexible structure.
+* Data is searchable and indexable.
+
+Cons: 
+
+* Changes in referral types require changes in code.
+
+
+## 2.4 Bonus Problem: Trying to enforce a normalized structure to open-ended data.
+
+> Authors include this problem inside the "Make use of Rails Serialization" section (mixed inside the previous problem).  However, this problem is different and important enough to deserve it's own section.
+
+It is fairly common in applications to handle data whose structure can't be anticipated.  For example an e-commerce platform where the sellers specify custom specs for the products: 
+
+- Product A has specs: Max-speed: 10 km/h, Available colors: red, green, blue.
+- Product B has specs: Size: Medium.
+
+It is a mistake to try to come up with an overly clever normalized solution to support the dynamic nature of this data.
+
+This is a very simple example; however, the solution still holds for applications that need to handle more complicated non-structured data (see book for examples).
+
+### Solution: Embrace the dynamic nature of the data and use serialization, JSONB or Array data types
+
+Take a look at [approaches 4 and 5](#approach-4-store-data-in-as-a-serialized-hash-in-a-text-column-on-the-user) of the previous problem.  You may use these same approaches to solve your problem
