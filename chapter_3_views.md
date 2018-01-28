@@ -177,3 +177,38 @@ _Contidionally rendering a sidebar in the layout if there is content for it_
 <% end %>
 
 ```
+
+## 3.2 Problem: Having logic in views or view helpers that belongs to the model
+
+Consider the following example:
+```erb
+<% if current_user && (current_user == @post.user ||
+    @post.editors.include?(current_user)) && @post.editable? &&
+    @post.user.active? %>
+    <%= link_to 'Edit this post', edit_post_url(@post) %>
+<% end %>
+```
+This code is determining wheter to display a link to edit a post based on a series of conditions that define if a post is editable.
+
+The problem here is that the logic that determines if a post is editable should belong to the `Post` model itself.
+
+### Solution: Identify logic that belongs to the models and move it there
+
+The solution is simple, add a method `post_editable_by?` to the `Post` model and modify the view to use that method.
+
+```erb
+<% if @post.editable_by?(current_user) %>
+    <%= link_to 'Edit this post', edit_post_url(@post) %>
+<% end %>
+```
+
+Some guidelines to identify where logic belongs to:
+
+* If the method will be used in both views and controllers, then it belongs to the model.
+* If the method will only be used in the views, then it should be a view helper.
+
+> Note from the summarizer: View helpers are controversial topic in the Rails world. If your application is small, then you can perfectly use the "Rails Way" helpers without any problem.  However, if your application is large, view helpers can become a mess.  Take a look at _Decorators and Presenters_ instead.  Here are some resources about them:
+
+* [Rails Cast for it](http://railscasts.com/episodes/287-presenters-from-scratch?autoplay=true).
+* [GoRails Decorators and Draper](https://gorails.com/series/design-patterns)
+* [Draper Gem](https://github.com/drapergem/draper)
