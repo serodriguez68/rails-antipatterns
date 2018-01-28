@@ -63,3 +63,117 @@ There are many ways of getting this wrong:
 ```
 
 Now the partial `_post.html.erb` is a centralized and authoritative source of how a post should be rendered.
+
+### 3.1.3 Problem: Lack of abstraction of repeated code in the views
+
+Imagine we have to code 2 views. 
+
+* View "A" has a navigation with links to the home page, the FAQs and a series of unique links relevant for view "A".
+* View "B" has a navigation with links to the home page, the FAQs and a series of unique links relevant for view "B".
+
+A developer comes up with the following solution:
+
+```erb
+<!-- In view A file -->
+<ul class="nav">
+    <li><%= link_to "Home", root_url %></li>
+    <li><%= link_to "Faqs", faqs_url %></li> 
+    <li><%= link_to "Relevant links for view A", view_a_url %></li> 
+</ul>
+<p>The rest of the stuff for view A </p>
+
+<!-- In view B file -->
+<ul class="nav">
+    <li><%= link_to "Home", root_url %></li>
+    <li><%= link_to "Faqs", maps_url %></li> 
+    <li><%= link_to "Relevant links for view B", view_B_url %></li> 
+</ul>
+<p>The rest of the stuff for view B </p>
+```
+This code has the following problems:
+
+* The code for "Home" and "Faqs" is repeated in both views (and possibly in all views).
+* Code for thinks like navs, sidebars and footer should probably live in the `layouts/application.html.erb`. Such file typically includes just the empty shells or shared elements for the general elements. Customization of such  elements can be done inside each view as needed (see solution).
+
+#### Solution: Use `content_for` to insert content into named sections of your layout from your view.
+
+```erb
+<!-- Inside the layouts/application.html.erb file -->
+<html>
+    <body>
+        <ul class="nav">
+            <li><%= link_to "Home", root_url %></li>
+            <li><%= link_to "Maps", maps_url %></li>
+            <%= content_for :nav %>
+        </ul>
+
+        <div class="main">
+            <%= yield %>
+        </div>
+
+    </body>
+</html>
+
+<!-- In view A file -->
+<% content_for :nav do %>
+    <li><%= link_to "Relevant links for view A", view_a_url %></li> 
+<% end %>
+<p>The rest of the stuff for view A </p>
+
+<!-- In view B file -->
+<% content_for :nav do %>
+    <li><%= link_to "Relevant links for view B", view_b_url %></li> 
+<% end %>
+<p>The rest of the stuff for view B </p>
+```
+
+This is much better! `content_for` allows us tu "push markup up" from the view to the layout. Notice that `content_for` pushes data to the __named sections__ in the layout.  Whatever is not inside a `content_for` block, will be passed  to the `yield` call in the layout.  Let's clarify that with an example:
+
+```erb
+<!-- This goes in the :nav section of the layout -->
+<% content_for :nav do %>
+    <li><%= link_to "Relevant links for view A", view_a_url %></li> 
+<% end %>
+
+<!-- This is goes in the :sidebar section of the layout -->
+<% content_for :sidebar do %>
+    The current time is:
+    <%= Time.now %>
+<% end %>
+
+<!-- This is goes to the yield block in the layout-->
+<p>The rest of the stuff for view A </p>
+```
+
+##### Other common tricks with `content_for
+
+_Define the `<body>` class for the view (with a default class)_
+```erb
+<!-- Inside the layouts/application.html.erb file -->
+<body class="<%= content_for :body_class || 'default-body-class' %>">
+
+<!-- Inside the faqs view -->
+<% content_for :body_class, "faqs" %>
+```
+
+_Define the head's `<title>` class for the view (with a default value)_
+```erb
+<!-- Inside the layouts/application.html.erb file -->
+<head>
+    <title>Acme Widgets | <%= content_for :title || "Home" %></title>
+</head>
+
+<!-- Inside the faqs view -->
+<% content_for :title, "FAQs" %>
+```
+
+_Contidionally rendering a sidebar in the layout if there is content for it_
+```erb
+<!-- Inside the layouts/application.html.erb file -->
+<% if content_for?(:sidebar) %> 
+    <div class="sidebar">
+        <%= content_for :sidebar %>
+    </div>
+<% end %>
+
+```
