@@ -265,6 +265,77 @@ Note that the solution splits nicely the _view rendering_ concern from the _find
 
 > You could argue that the _view rendering_ concern should live inside a _view partial_ from the beginning.  You could be right, it is your call to decide when to promote this from a helper to a partial.
 
+# 3.2 Anti-Pattern: Markup Mayhem
+### 3.2.1 Problem: Not using semantic markup
+Semantic markup means:
+* Every element in the page means something and is labelled with a `class`
+or `id` to identify it.
+* The right tags should be used for the right content.
+* Styling shoud be done at the CSS level (not directly).
 
+Semantic markup meter: Remove all content from your markup and leave just the HTML tags (with classes and ids).  If your empty tags don't make sense, then your markup is not semantic enough (see example).
+
+```html
+<!-- Example of non semantic makrup -->
+<div> 
+    <div>
+        <span style="font-size: 2em;"> 
+            I love kittens!
+        </span> 
+    </div>
+    <div>
+        I love kittens because they're <span style="font-style: italic">
+        soft and fluffy! </span>
+    </div>
+</div>
+
+<!-- That same markup without the content -->
+<div> 
+    <div>
+        <span style="font-size: 2em;"> 
+        </span> 
+    </div>
+    <div>
+        <span style="font-style: italic"></span>
+    </div>
+</div>
+```
+
+Problems with this markup:
+
+* Inline styling.
+* Wrongs tags used for content (e.g not using h2 or em tags).
+* The markup does not make sense when content is removed.
+
+#### Solution: Use semantic markup
+Here is a semantic version of the previous code.
+
+```html
+<!-- Example of semantic makrup -->
+<div id="posts">
+    <div id="post_1" class="post">
+        <h2>I love kittens!</h2>
+        <div class="body">
+            I love kittens because they're <em>soft and fluffy!</em>
+        </div>
+    </div> 
+</div>
+
+<!-- That same markup without the content -->
+<div id="posts">
+    <div id="post_1" class="post">
+        <h2></h2>
+        <div class="body">
+            <em></em>
+        </div>
+    </div> 
+</div>
+```
+
+From the stripped down version of the markup we can clearly see that this code has something to do with `posts` and that each `post` has a `heading` and a `body`.
+
+### 3.2.2 Problem: Spaghetti erb to comply with semantic markup
+
+### 3.2.3 Problem: Cluttered view because of using erb
 
 
