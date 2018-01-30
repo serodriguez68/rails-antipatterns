@@ -1,5 +1,8 @@
 # Chapter 3 - Views
-# 3.1 General Problem: Not using the available View Methods that come with Rails (and hand-rolling the solutions)
+
+## 3.1 Anti-Pattern: PHPitis
+
+### 3.1.1 General Problem: Not using the available View Methods that come with Rails (and hand-rolling the solutions)
 
 Rails provides a solution to many of the common patterns that are used in views.  
 
@@ -7,7 +10,7 @@ There are many helper methods given by Rails to cover here. However, the best pr
 
 Some of the most popular helpers are shown next.
 
-### 3.1.1 Problem: Hand-rolled forms
+#### 3.1.1.1 Problem: Hand-rolled forms
 There are many ways of getting this wrong:
 
 * Using direct HTML
@@ -15,7 +18,7 @@ There are many ways of getting this wrong:
     * The use of  `form_tags` may be a symptom that there is something wrong with your domain modelling.
 * Using deprecated or redundatn `form_for`  syntax.
 
-#### Solution: Use the standard `form_for` helper with a `@resource`
+##### Solution: Use the standard `form_for` helper with a `@resource`
 Rails is smart when dealing with forms.
 
 ```erb
@@ -34,7 +37,7 @@ If `@user` is an existing user (i.e we are editing the user), Rails will render 
 </form>
 ```
 
-### 3.1.2 Problem: Hand-rolled iteration through `@collections`
+#### 3.1.1.2 Problem: Hand-rolled iteration through `@collections`
 There are many ways of getting this wrong:
 
 * Iterating the collection directly in the template. (see code example)
@@ -49,7 +52,7 @@ There are many ways of getting this wrong:
 <% end %>
 ```
 
-#### Solution: Use Rails convention for iterating `@collections` in views
+##### Solution: Use Rails convention for iterating `@collections` in views
 
 ```erb
 <!-- posts/index.html.erb --> 
@@ -64,7 +67,7 @@ There are many ways of getting this wrong:
 
 Now the partial `_post.html.erb` is a centralized and authoritative source of how a post should be rendered.
 
-### 3.1.3 Problem: Lack of abstraction of repeated code in the views
+### 3.1.2 Problem: Lack of abstraction of repeated code in the views
 
 Imagine we have to code 2 views. 
 
@@ -178,7 +181,7 @@ _Contidionally rendering a sidebar in the layout if there is content for it_
 
 ```
 
-## 3.2 Problem: Having logic in views or view helpers that belongs to the model
+### 3.1.3 Problem: Having logic in views or view helpers that belongs to the model
 
 Consider the following example:
 ```erb
@@ -192,7 +195,7 @@ This code is determining wheter to display a link to edit a post based on a seri
 
 The problem here is that the logic that determines if a post is editable should belong to the `Post` model itself.
 
-### Solution: Identify logic that belongs to the models and move it there
+#### Solution: Identify logic that belongs to the models and move it there
 
 The solution is simple, add a method `post_editable_by?` to the `Post` model and modify the view to use that method.
 
@@ -213,7 +216,7 @@ Some guidelines to identify where logic belongs to:
 * [GoRails Decorators and Draper](https://gorails.com/series/design-patterns)
 * [Draper Gem](https://github.com/drapergem/draper)
 
-## 3.3 Problem: Still having complex logic in views after solving the 2 previous problems.
+### 3.1.4 Problem: Still having complex logic in views after solving the 2 previous problems.
 At this point we are already using the appropriate view methods given by Rails and we have already made sure that every logic that belongs to a model, has been moved accordingly.  However, we may still find ourselves having  `if` statments in views that degrade readability of the code.  For example:
 
 ```erb
