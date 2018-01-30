@@ -130,7 +130,7 @@ This code has the following problems:
 <p>The rest of the stuff for view B </p>
 ```
 
-This is much better! `content_for` allows us tu "push markup up" from the view to the layout. Notice that `content_for` pushes data to the __named sections__ in the layout.  Whatever is not inside a `content_for` block, will be passed  to the `yield` call in the layout.  Let's clarify that with an example:
+This is much better! `content_for` allows us to "push markup up" from the view to the layout. Notice that `content_for` pushes data to the __named sections__ in the layout.  Whatever is not inside a `content_for` block, will be passed  to the `yield` call in the layout.  Let's clarify that with an example:
 
 ```erb
 <!-- This goes in the :nav section of the layout -->
@@ -170,7 +170,7 @@ _Define the head's `<title>` class for the view (with a default value)_
 <% content_for :title, "FAQs" %>
 ```
 
-_Contidionally rendering a sidebar in the layout if there is content for it_
+_Conditionally rendering a sidebar in the layout if there is content for it_
 ```erb
 <!-- Inside the layouts/application.html.erb file -->
 <% if content_for?(:sidebar) %> 
@@ -191,7 +191,7 @@ Consider the following example:
     <%= link_to 'Edit this post', edit_post_url(@post) %>
 <% end %>
 ```
-This code is determining wheter to display a link to edit a post based on a series of conditions that define if a post is editable.
+This code is determining whether to display a link to edit a post based on a series of conditions that define if a post is editable.
 
 The problem here is that the logic that determines if a post is editable should belong to the `Post` model itself.
 
@@ -217,7 +217,7 @@ Some guidelines to identify where logic belongs to:
 * [Draper Gem](https://github.com/drapergem/draper)
 
 ### 3.1.4 Problem: Still having complex logic in views after solving the 2 previous problems.
-At this point we are already using the appropriate view methods given by Rails and we have already made sure that every logic that belongs to a model, has been moved accordingly.  However, we may still find ourselves having  `if` statments in views that degrade readability of the code.  For example:
+At this point we are already using the appropriate view methods given by Rails and we have already made sure that every logic that belongs to a model, has been moved accordingly.  However, we may still find ourselves having  `if` statements in views that degrade readability of the code.  For example:
 
 ```erb
 <div class="feed"> 
@@ -231,7 +231,7 @@ At this point we are already using the appropriate view methods given by Rails a
 <!-- More code related with the view -->
 ```
 
-In this example, if @project exists, then we render a "Suscribe to #{this project} alerts" button.  Else, we render another button.
+In this example, if @project exists, then we render a "Subscribe to #{this project} alerts" button.  Else, we render another button.
 
 The problem here is that we are having the view decide which link to render, despite that the ultimate goal is to render _a_ link.
 
@@ -240,9 +240,9 @@ The problem here is that we are having the view decide which link to render, des
 
 We can move that bit of code to a custom helper. For example, let's say that this view is part of the `ProjectController` and hence it makes sense to move this inside the `ProjectHelper`. 
 
-You DON'T have to keep Rail's default naming convetion for view helpers.  View helpers are globally accessible so naming doesn't matter.  Make sure you use a naming system that helps you keep code organised and DON'T clutter the `ApplicationHelper` with everything.
+You DON'T have to keep Rail's default naming convention for view helpers.  View helpers are globally accessible so naming doesn't matter.  Make sure you use a naming system that helps you keep code organized and DON'T clutter the `ApplicationHelper` with everything.
 
->The fact that helpers are globally acessible is one of the main reasons why view helpers are controversial.
+>The fact that helpers are globally accessible is one of the main reasons why view helpers are controversial.
 
 ```ruby
 # app/helpers/a_place_where_this_makes_sense_helper.rb
@@ -261,17 +261,17 @@ def alerts_rss_url(project = nil)
 end
 ```
 
-Note that the solution splits nicely the _view rendering_ concern from the _finding the appropriate link_ concern into 2 different methods.  Also note that we are leveraging the `content_tag` method to render html inside one helper.  This is fine  if your helper includes only a few html tags. However, if you will be using lots of markup, use a _view partial_ instead.
+Note that the solution splits nicely the _view rendering_ concern from the _finding the appropriate link_ concern into 2 different methods.  Also note that we are leveraging the `content_tag` method to render HTML inside one helper.  This is fine  if your helper includes only a few HTML tags. However, if you will be using lots of markup, use a _view partial_ instead.
 
 > You could argue that the _view rendering_ concern should live inside a _view partial_ from the beginning.  You could be right, it is your call to decide when to promote this from a helper to a partial.
 
 # 3.2 Anti-Pattern: Markup Mayhem
 ### 3.2.1 Problem: Not using semantic markup
 Semantic markup means:
-* Every element in the page means something and is labelled with a `class`
+* Every element in the page means something and is labeled with a `class`
 or `id` to identify it.
 * The right tags should be used for the right content.
-* Styling shoud be done at the CSS level (not directly).
+* Styling should be done at the CSS level (not directly).
 
 Semantic markup meter: Remove all content from your markup and leave just the HTML tags (with classes and ids).  If your empty tags don't make sense, then your markup is not semantic enough (see example).
 
@@ -303,7 +303,7 @@ Semantic markup meter: Remove all content from your markup and leave just the HT
 
 Problems with this markup:
 
-* Inline styling.
+* In-line styling.
 * Wrongs tags used for content (e.g not using h2 or em tags).
 * The markup does not make sense when content is removed.
 
@@ -311,7 +311,7 @@ Problems with this markup:
 Here is a semantic version of the previous code.
 
 ```html
-<!-- Example of semantic makrup -->
+<!-- Example of semantic markup -->
 <div id="posts">
     <div id="post_1" class="post">
         <h2>I love kittens!</h2>
@@ -334,8 +334,55 @@ Here is a semantic version of the previous code.
 
 From the stripped down version of the markup we can clearly see that this code has something to do with `posts` and that each `post` has a `heading` and a `body`.
 
-### 3.2.2 Problem: Spaghetti erb to comply with semantic markup
+### 3.2.2 Problem: Resorting to spaghetti erb to comply with semantic markup
 
-### 3.2.3 Problem: Cluttered view because of using erb
+Your are committed to semantic but you resort to ugly `erb` code to be able to comply with it, ultimately affecting your code readability. 
+
+```erb
+<div class="post" id="post_<%= @post.id %>"> 
+    <h2 class="title">Title</h2>
+    <div class="body">Lorem ipsum dolor sit amet, consectetur... </div>
+
+    <ol class="comments">
+        <% @post.comments.each do |comment| %>
+            <li class="comment" id="comment_<%= comment.id %>"> 
+                <%= comment.body %>
+            </li> 
+        <% end %>
+    </ol> 
+</div>
+```
+
+The previous code is perfectly semantic, but it has the following problems:
+
+* In-line erb (like `id="post_<%= @post.id %>`) is difficult to follow.
+* The labeling of sections according to the resource class is done manually.
+    * For example, `class="post"` has been written down manually.   
+
+#### Solution: Use Rails' built in view helpers for semantic markup
+
+Rails provides 2 very handy view helpers: `div_for` and the more general `content_tag_for`. The re-factored version of the previous code shows how to use them.
+
+```erb
+<%= div_for @post do %>
+    <h2 class="title">Title</h2>
+    <div class="body">Lorem ipsum dolor sit amet, consectetur... </div>
+    
+    <ol class="comments">
+        <%= content_tag_for(:li, @post.comments) do |comment| %>
+            <%= comment.body %>
+        <% end %>
+    </ol> 
+<% end %>
+```
+
+`content_tag_for` is handling both the labeling of the `li` element and the iteration. [Here is the documentation](https://apidock.com/rails/ActionView/Helpers/RecordTagHelper/content_tag_for) for the method.
+
+>__Important Note:__ This re-factored code exhibits an anti-pattern that we covered previously: [Hand-rolled iteration of comments](#3112-problem-hand-rolled-iteration-through-collections), when we could use the more convention friendly `render comments` instead.
+
+Note that standard rails helpers like `form_for` also automatically generate semantic markup for you (for free).
+
+
+### 3.2.3 Problem: Cluttered views because of using erb
 
 
