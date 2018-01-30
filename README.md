@@ -13,9 +13,11 @@ __You don't have to read everything in order.__
 The notes have been designed to be fully self-contained by chapter.  
 
 __Step 1: Find the chapter where your problem is__
+
 If you are struggling with a particular topic (e.g Views), jump to that chapter; everything you need is there for you.
 
 __Step 2: Find a "Problem" title that describes your problem__
+
 `ctrl+F` through the `Problem:` looking for something that sounds like your problem.  Each problem section is also self-contained and suggests at least one __solution__.
 
 _______________________________________________________________________________
