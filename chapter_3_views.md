@@ -265,7 +265,7 @@ Note that the solution splits nicely the _view rendering_ concern from the _find
 
 > You could argue that the _view rendering_ concern should live inside a _view partial_ from the beginning.  You could be right, it is your call to decide when to promote this from a helper to a partial.
 
-# 3.2 Anti-Pattern: Markup Mayhem
+## 3.2 Anti-Pattern: Markup Mayhem
 ### 3.2.1 Problem: Not using semantic markup
 Semantic markup means:
 * Every element in the page means something and is labeled with a `class`
