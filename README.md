@@ -1,6 +1,23 @@
 # Rails Anti-patterns Summary
 
-__These are some notes I took while reading the book. Feel free to send me a pull request if you want to make an improvement.__
+These are some notes I took while reading the book. 
+
+__The notes are heavily modified to account for newer versions of Rails (the book was written for Rails 3 and I have updated most of the content to Rails 5).  They also include a good amount of my personal opinion based on my experience as a developer.__
+
+Feel free to send me a pull request if you want to make an improvement.
+_______________________________________________________________________________
+# How to use these notes
+
+__You don't have to read everything in order.__
+
+The notes have been designed to be fully self-contained by chapter.  
+
+__Step 1: Find the chapter where your problem is__
+If you are struggling with a particular topic (e.g Views), jump to that chapter; everything you need is there for you.
+
+__Step 2: Find a "Problem" title that describes your problem__
+`ctrl+F` through the `Problem:` looking for something that sounds like your problem.  Each problem section is also self-contained and suggests at least one __solution__.
+
 _______________________________________________________________________________
 # Table of Content
 ## [Chapter 1 - Models](#chapter-1---models-1)
