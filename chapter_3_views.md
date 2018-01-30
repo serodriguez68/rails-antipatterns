@@ -212,3 +212,56 @@ Some guidelines to identify where logic belongs to:
 * [Rails Cast for it](http://railscasts.com/episodes/287-presenters-from-scratch?autoplay=true).
 * [GoRails Decorators and Draper](https://gorails.com/series/design-patterns)
 * [Draper Gem](https://github.com/drapergem/draper)
+
+## 3.3 Problem: Still having complex logic in views after solving the 2 previous problems.
+At this point we are already using the appropriate view methods given by Rails and we have already made sure that every logic that belongs to a model, has been moved accordingly.  However, we may still find ourselves having  `if` statments in views that degrade readability of the code.  For example:
+
+```erb
+<div class="feed"> 
+    <% if @project %>
+        <%= link_to "Subscribe to #{@project.name} alerts.", project_alerts_url(@project, :format => :rss), :class => "feed_link" %>
+    <% else %>
+        <%= link_to "Subscribe to these alerts.",
+            alerts_url(format => :rss), :class => "feed_link" %>
+    <% end %> 
+</div>
+<!-- More code related with the view -->
+```
+
+In this example, if @project exists, then we render a "Suscribe to #{this project} alerts" button.  Else, we render another button.
+
+The problem here is that we are having the view decide which link to render, despite that the ultimate goal is to render _a_ link.
+
+#### Solution: Move that bit to a custom helper (and/or a view partial)
+> As I mentioned earlier, view helpers are a controversial topic. See previous comment for more information.
+
+We can move that bit of code to a custom helper. For example, let's say that this view is part of the `ProjectController` and hence it makes sense to move this inside the `ProjectHelper`. 
+
+You DON'T have to keep Rail's default naming convetion for view helpers.  View helpers are globally accessible so naming doesn't matter.  Make sure you use a naming system that helps you keep code organised and DON'T clutter the `ApplicationHelper` with everything.
+
+>The fact that helpers are globally acessible is one of the main reasons why view helpers are controversial.
+
+```ruby
+# app/helpers/a_place_where_this_makes_sense_helper.rb
+def rss_link(project = nil) 
+    content_tag :div, :class => "feed" do
+        link_to "Subscribe to these #{project.name if project} alerts.", alerts_rss_url(project),
+    end 
+end
+
+def alerts_rss_url(project = nil) 
+    if project
+        project_alerts_url(project, :format => :rss) 
+    else
+        alerts_url(:rss) 
+    end
+end
+```
+
+Note that the solution splits nicely the _view rendering_ concern from the _finding the appropriate link_ concern into 2 different methods.  Also note that we are leveraging the `content_tag` method to render html inside one helper.  This is fine  if your helper includes only a few html tags. However, if you will be using lots of markup, use a _view partial_ instead.
+
+> You could argue that the _view rendering_ concern should live inside a _view partial_ from the beginning.  You could be right, it is your call to decide when to promote this from a helper to a partial.
+
+
+
+
