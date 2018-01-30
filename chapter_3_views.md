@@ -383,6 +383,7 @@ Rails provides 2 very handy view helpers: `div_for` and the more general `conten
 Note that standard rails helpers like `form_for` also automatically generate semantic markup for you (for free).
 
 
-### 3.2.3 Problem: Cluttered views because of using erb
+### 3.2.3 Problem: `erb`sucks >  Solution: use [HAMLS](https://github.com/haml/haml) or [Slim](https://github.com/slim-template/slim)
 
+### 3.2.4 Problem: `CSS`sucks >  Solution: use [Sass](http://sass-lang.com/)
 
