@@ -15,8 +15,8 @@ There are many ways of getting this wrong:
 
 * Using direct HTML
 * Using the `form_tag` helper when a `form_for` helper could be used.
-    * The use of  `form_tags` may be a symptom that there is something wrong with your domain modelling.
-* Using deprecated or redundatn `form_for`  syntax.
+    * The use of  `form_tags` may be a symptom that there is something wrong with your domain modeling.
+* Using deprecated or redundant `form_for`  syntax.
 
 ##### Solution: Use the standard `form_for` helper with a `@resource`
 Rails is smart when dealing with forms.

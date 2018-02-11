@@ -395,7 +395,7 @@ There 2 main problems with this code:
 * The Account class has the responsibility of manipulating other classes  (`User` and `Mailer`) through the  `create_account!` method. (This is the main problem).
 * The `transaction` block can be avoided by using standard Rails validations and callbacks.
 
-> __Note from the summarizer:__ I agree that this is an anti-pattern and that there are better ways for handling this type of code.  However, I don't  agree with the book's suggested solution.  I include that solution, for the sake of completeness. Nevertheless, take the time to take a look at things like [the use case pattern](https://webuild.envato.com/blog/a-case-for-use-cases/) or service objects, I believe they are much more elegant solutions to the main problem (even if you can't avoid the transaction block).
+> __Note from the summarizer:__ I agree that this is an anti-pattern and that there are better ways for handling this type of code.  However, I don't  agree with the book's suggested solution.  I include that solution, for the sake of completeness. [On the controller chapter](/chapter-4-controllers#important-notes-about-pattern-names-in-the-rails-community) I discuss multiple approaches that are better suited to tackle this problem (even if you can't avoid the transaction block): Form Objects and Service Objects.
 
 #### Proposed Solution: fixing the call to `User` by using `nested_attributes` and send email with a callback
 

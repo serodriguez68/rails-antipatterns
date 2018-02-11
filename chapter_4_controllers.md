@@ -10,7 +10,37 @@ Here are some names of popular authentication libraries:
 * [Authlogic](https://github.com/binarylogic/authlogic): Minimalistic authentication solution that pushes down the authentication logic to models.
 
 ## 4.2 Anti-Pattern: Fat Controller
-### 4.2.1 Problem: Using hand-rolled auxiliary save or create methods in models to create associated records of an instance.
+
+### 4.2.1 Important Notes About Pattern Names in the Rails Community
+Pattern naming  is apparently very inconsistent in the Rails community. You will find the same name used for different patterns, which makes everything very confusing.
+
+Here are my 2 cents to try to clear up the confusion:
+
+#### Patterns to Fix Views:
+
+* __Decorator / Presenter / View Models / View Objects:__ Create objects that "wrap" models and contain only view specific logic.  [Draper](https://github.com/drapergem/draper) is a popular gem for doing this.
+    * Rails Casts refers to this as Presenters.
+    * GoRails refers to this as Decorators
+    * Code Climate refers to this as View Objects.
+    * Draper refers to this as Decorators.
+
+#### Patterns to re-factor Fat Controllers (and also Avoiding Fat Models):
+
+* __Presenter / Form Object:__ When multiple Active Record objects are updated in a single form, a form object can be used to wrap the manipulation of multiple models into one.  The __form object__ quacks like an Active Record object, so all your controller code keeps familiar.
+    * Rails Anti-patterns refers to this as Presenters.
+    * Code Climate refers to this as Form Objects. 
+    * Rails Casts refers to this as Form Objects.
+    * Go Rails refers to this as From Objects.
+
+* Decorators (as explained by [Code Climate in this post](https://codeclimate.com/blog/7-ways-to-decompose-fat-activerecord-models/)): They are an alternative to using callbacks in models. Decorator objects should quack like the original object but can tap into some of it's methods to modify the behavior. Apparently, this type of decorators are not so popular in the Rails community and are replaced by service objects.
+
+* __Service Objects__: wrapper object that orchestrate multiple actions involving several active record objects. The community has many different ways of implementing service objects.
+    *  [Interactor](https://github.com/collectiveidea/interactor) is an opinionated library for service objects.
+    * [The use case pattern](https://webuild.envato.com/blog/a-case-for-use-cases/) introduced by Envato comes with a [small library](https://github.com/stevehodgkiss/interaction).
+    *  [Here](https://medium.com/selleo/essential-rubyonrails-patterns-part-1-service-objects-1af9f9573ca1) are some general good practices for service objects.
+
+
+### 4.2.2 Problem: Using hand-rolled auxiliary save or hand-roll methods in models to create associated records of an instance.
 
 ```ruby
 class ArticlesController < ApplicationController 
@@ -69,4 +99,47 @@ The main refactoring points were:
 * Change the style of associations like `@article.reporter_id = current_user.id` to `@article.reporter = current_user`.
 * Get rid of exceptions for control flow and use the regular boolean value returned by the `save` method.
 
->Notes form the summarizer: `callbacks` and `accepts_nested_attributes_for` are __very controversial__ topics.  With experience you will form an opinion on how to use them in __moderation__.  One sign that your callbacks are going the wrong way are slow tests, brittle tests, or an urge to stub out all callback side effects for wholly unrelated tests.
+>Notes form the summarizer: `callbacks` and `accepts_nested_attributes_for` are __very controversial__ topics.  With experience you will form an opinion on how to use them in __moderation__.  As a rule of thumb moving manipulation of multiple models into callbacks is only OK if the functionality is simple AND the manipulation of associated models can be viewed as the responsibility of the primary model.
+
+>One sign that your callbacks are going the wrong way are slow tests, brittle tests, or an urge to stub out all callback side effects for wholly unrelated tests.
+
+### 4.2.3 Problem: 1 form contains fields of different models and the controller ended up manipulating multiple objects.
+
+The scenario is this: In order for your users to sign up, we need to create both a `User` and an `Account` record in the database. We need to make sure that either both or none are created, hence we have to use database transactions.
+
+The resulting code looks like this:
+```ruby
+class AccountsController < ApplicationController
+    def new
+        @account = Account.new 
+        @user = User.new
+    end
+    def create
+        @account = Account.new(params[:account])
+        @user = User.new(params[:user])
+        @user.account = @account
+        
+        ActiveRecord::Base.transaction do @account.save!
+            @account.save!
+            @user.save!
+        end
+
+        flash[:notice] = 'Account was successfully created.' 
+        redirect_to(@account)
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotSaved 
+        render :action => "new"
+    end 
+end
+```
+
+Problems with this code:
+* Using Exceptions to control flow
+* Introducing DB transactions, a low-level database concept, into the controller layer.
+    * Rule of thumb: if you controller is doing explicit use of transactions, you are going the wrong way.
+* The names `AccountsController#create` and `AccountsController#new` are misleading since they also manipulate users.
+
+
+
+#### Solution: Use the Form Object Pattern
+
+YOU ARE HERE
