@@ -237,3 +237,7 @@ Here are 2 execellent posts on how to hand-roll your own form objects:
 * [ThoughtBot Approach](https://robots.thoughtbot.com/activemodel-form-objects)
 
 * [Envato Approach](https://webuild.envato.com/blog/creating-form-objects-with-activemodel-and-virtus/)
+
+
+## 4.2 Anti-Pattern: Bloated Sessions
+<!-- TO DO:  You are here.  The summary efforts should resume here -->
